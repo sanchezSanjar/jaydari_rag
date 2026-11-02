@@ -28,19 +28,23 @@ class QdrantService:
             vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
         )
 
-    def upsert_documents(self, documents: list[dict]) -> int:
-        texts = [doc['text'] for doc in documents]
-        vectors = self._embeddings.embed_texts(texts)
-        points = []
-        for doc, vector in zip(documents, vectors):
-            doc_id = doc.get('id') or str(uuid.uuid4())
-            payload = {
-                'text': doc['text'],
-                'metadata': doc.get('metadata') or {},
-            }
-            points.append(PointStruct(id=doc_id, vector=vector, payload=payload))
-        self._client.upsert(collection_name=self._settings.qdrant_collection, points=points)
-        return len(points)
+    def upsert_documents(self, documents: list[dict], batch_size: int = 256) -> int:
+        # embed and upload in batches to stay under Qdrant's request size limit
+        total = 0
+        for start in range(0, len(documents), batch_size):
+            batch = documents[start:start + batch_size]
+            vectors = self._embeddings.embed_texts(doc['text'] for doc in batch)
+            points = []
+            for doc, vector in zip(batch, vectors):
+                doc_id = doc.get('id') or str(uuid.uuid4())
+                payload = {
+                    'text': doc['text'],
+                    'metadata': doc.get('metadata') or {},
+                }
+                points.append(PointStruct(id=doc_id, vector=vector, payload=payload))
+            self._client.upsert(collection_name=self._settings.qdrant_collection, points=points)
+            total += len(points)
+        return total
 
     def search(self, query_vector: list[float], limit: int) -> list[dict]:
         if hasattr(self._client, 'search'):

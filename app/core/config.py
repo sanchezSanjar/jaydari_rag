@@ -21,15 +21,16 @@ class Settings(BaseSettings):
     llm_model: str
     llm_adapter_path: str | None = None
     llm_device: str = 'cpu'
-    llm_max_new_tokens: int = 256
+    llm_max_new_tokens: int
     llm_temperature: float = 0.2
+    llm_adapter_path: str | None = None
 
     rag_enabled: bool = True
     rag_mode: str = 'auto'
     top_k: int = 5
     max_context_chars: int = 4000
     min_score: float = 0.25
-    min_score_strict: float = 0.35
+    max_score_strict: float = 0.35
     max_sources: int = 2
     chunk_size_chars: int = 1200
     chunk_overlap_chars: int = 200
